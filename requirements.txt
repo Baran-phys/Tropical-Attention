@@ -38,6 +38,7 @@ six==1.17.0
 sympy==1.13.1
 threadpoolctl==3.6.0
 torch==2.6.0
+tropical-gemm[torch]==0.1.0
 triton==3.2.0
 typing_extensions==4.13.1
 tzdata==2025.2

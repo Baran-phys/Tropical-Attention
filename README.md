@@ -24,6 +24,20 @@ We experiment on 11 combinatorial tasks:
 ## Tropical kernel
 
 If you just want the **Tropical Attention kernel**, use **`TropicalAttention.py`**.
+Version **2.0.0** routes the max-plus products through
+[`tropical-gemm`](https://github.com/TensorBFS/tropical-gemm) when installed,
+using its SIMD CPU backend through the published native extension and its CUDA
+DLPack backend when the PyTorch helper is available. If the package is not
+installed or the tensor shape/dtype/device is unsupported, the code falls back
+to the native PyTorch implementation.
+
+Backend selection is automatic by default. You can force a backend with:
+
+```bash
+export TROPICAL_ATTENTION_MAXPLUS_BACKEND=auto           # default
+export TROPICAL_ATTENTION_MAXPLUS_BACKEND=torch          # PyTorch fallback
+export TROPICAL_ATTENTION_MAXPLUS_BACKEND=tropical_gemm  # fail if unavailable
+```
 
 <summary>Example (instantiate inside your model)</summary>
 

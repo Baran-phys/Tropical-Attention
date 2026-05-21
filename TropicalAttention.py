@@ -2,6 +2,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from tropical_gemm_backend import __version__, maxplus_matmul
+
 
 class TropicalLinear(nn.Module):
     def __init__(self, input_dim, output_dim):
@@ -11,11 +13,7 @@ class TropicalLinear(nn.Module):
         self.W = nn.Parameter(torch.randn(output_dim, input_dim))
     
     def forward(self, x):
-        x_expanded = x.unsqueeze(-2)
-        W_expanded = self.W.unsqueeze(0)
-        Wx = x_expanded + W_expanded  
-        y, _ = torch.max(Wx, dim=-1)
-        return y
+        return maxplus_matmul(x, self.W.transpose(0, 1))
     
 class TropicalAttention(nn.Module):
     def __init__(self, d_model, n_heads, device, tropical_proj=True, tropical_norm=False, symmetric=True):
@@ -81,15 +79,14 @@ class TropicalAttention(nn.Module):
             d_trop = max_diff - min_diff    # [B, S, S]
             attn_scores = - d_trop           # Higher scores for closer queries and keys
         else:
-            diff = q.unsqueeze(2) - k.unsqueeze(3)   # [B, S, 1, D] - [B, 1, S, D] -> [B, S, S, D]
+            diff = q.unsqueeze(2) - k.unsqueeze(1)   # [B, S, 1, D] - [B, 1, S, D] -> [B, S, S, D]
             sum_diff = diff.sum(dim=-1)              # [B, S, S]
             min_diff = diff.amin(dim=-1)             # [B, S, S]
             n = q.size(-1)
             attn_scores = - (sum_diff - n * min_diff)
         
         # Compute context using tropical multiplication and aggregation
-        sum_sv = attn_scores.unsqueeze(-1) + v.unsqueeze(1)  # [B, S, S, D]
-        context = sum_sv.max(dim=2).values  # [B, S, D]
+        context = maxplus_matmul(attn_scores, v)  # [B, S, D]
         
         # Reshape context back to [batch_size, seq_len, d_model]
         context = context.reshape(batch_size, self.n_heads, seq_len, self.d_k).permute(0, 2, 1, 3).reshape(batch_size, seq_len, -1)
